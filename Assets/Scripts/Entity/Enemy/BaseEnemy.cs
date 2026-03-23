@@ -33,7 +33,6 @@ public class BaseEnemy : BaseEntity
         _enemyAttack.Init(this);
     }
 
-    // 상태 전환 시 한 번만 호출 (폴링 제거)
     protected override void OnStateChanged(EntityState oldState, EntityState newState)
     {
         bool canAct = (newState == EntityState.Alive);

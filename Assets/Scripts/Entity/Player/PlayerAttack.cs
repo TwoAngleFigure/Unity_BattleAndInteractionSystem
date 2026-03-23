@@ -88,7 +88,6 @@ public class PlayerAttack : MonoBehaviour
 
         _animator.SetTrigger("isAttack");
 
-        // 코루틴 타이머만으로 상태 복구 (AnimationCall 콜백 제거)
         yield return new WaitForSeconds(_attackMotionTime / _atkSpeed);
 
         if (_player.State() == EntityState.Attack)
@@ -113,10 +112,8 @@ public class PlayerAttack : MonoBehaviour
     {
         if (weapon == null) return;
 
-        // 공격 속도에 따른 실제 전체 모션 시간 계산
         float actualMotionTime = _attackMotionTime / _atkSpeed;
 
-        // 백분율을 기반으로 실제 초(seconds) 계산
         float calculatedPreDelay = actualMotionTime * (_hitboxPreDelay / 100f);
         float calculatedDuration = actualMotionTime * (_hitboxDuration / 100f);
 
