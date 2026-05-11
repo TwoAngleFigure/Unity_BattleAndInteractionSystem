@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b126a79821a96a4a90147c50b1f8f3d, type: 3}
+  m_Name: New Player Data
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerData
+  inventoryCurrencyList:
+  - {fileID: 11400000, guid: 33f341e40b71dfa43bba81fef7d96249, type: 2}
+  - {fileID: 11400000, guid: 0686806f085f09b438c8c400d4f3badf, type: 2}
+  inventoryItemList: []

@@ -5,6 +5,8 @@ TagManager:
   serializedVersion: 3
   tags:
   - Floor
+  - Stack
+  - Price
   layers:
   - Default
   - TransparentFX
@@ -19,7 +21,7 @@ TagManager:
   - Player
   - Enemy
   - Weapon
-  - 
+  - Interaction Object
   - 
   - 
   - 
