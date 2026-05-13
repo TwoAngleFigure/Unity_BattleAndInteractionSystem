@@ -3,87 +3,61 @@ using UnityEngine.InputSystem;
 
 public class PlayerCamera : MonoBehaviour
 {
-    [Header("Target")]
-    [SerializeField] Transform target;
-
-    [Header("Input Action")]
-    private PlayerFieldControl cameraActions;
-    private InputAction viewAction;
-    private InputAction rightClickAction;
-    private InputAction scrollAction;
+    [Header("Cinemachine")]
+    [SerializeField] private Transform _cinemachineFollowTarget;
+    [SerializeField] private float _cameraAngleOverride = 0f;
 
     [Header("View Control")]
-    [SerializeField] float lookSensitivity = 0.5f;
-    [SerializeField] float cameraDistance = 5f;
-    [SerializeField] float zoomSpeed = 5f;
-    [SerializeField] float minDistance = 2f;
-    [SerializeField] float maxDistance = 10f;
-    [SerializeField] Vector3 cameraOffset = new Vector3(0, 1.5f, 0);
-    
-    public bool isMouseLookActive = false;
-    private float yaw;
-    private float pitch;
+    [SerializeField] private float _lookSensitivity = 0.5f;
+    [SerializeField] private float _topClamp = 70f;
+    [SerializeField] private float _bottomClamp = -30f;
+    [SerializeField] private bool _lockCameraPosition = false;
 
-    private void Awake()
+    private float _targetYaw;
+    private float _targetPitch;
+    private Vector2 _lookInput;
+
+    private const float Threshold = 0.01f;
+
+    private void Start()
     {
-        if (target == null)
-            target = transform;
-
-        cameraActions = new();
-        viewAction = cameraActions.Player.View;
-        rightClickAction = cameraActions.Player.RightClick;
-        scrollAction = cameraActions.Player.Scroll;
-    }
-
-    private void OnEnable()
-    {
-        cameraActions.Enable();
-        rightClickAction.performed += _ => OnToggleMouseLook();
-    }
-
-    private void OnDisable()
-    {
-        rightClickAction.performed -= _ => OnToggleMouseLook();
-        cameraActions.Disable();
+        _targetYaw = _cinemachineFollowTarget.rotation.eulerAngles.y;
     }
 
     private void LateUpdate()
     {
-        float _scroll = scrollAction.ReadValue<Vector2>().y;
-        if (_scroll != 0)
-        {
-            cameraDistance -= _scroll * zoomSpeed * Time.deltaTime;
-            cameraDistance = Mathf.Clamp(cameraDistance, minDistance, maxDistance);
-        }
-
-        if (isMouseLookActive)
-        {
-            Vector2 _mouseDelta = viewAction.ReadValue<Vector2>() * lookSensitivity;
-            yaw += _mouseDelta.x;
-
-            pitch -= _mouseDelta.y;
-            pitch = Mathf.Clamp(pitch, -70f, 70f);
-
-            Quaternion _rotation = Quaternion.Euler(pitch, yaw, 0f);
-            Vector3 _targetPos = target.position + cameraOffset;
-            transform.position = _targetPos + (_rotation * Vector3.back * cameraDistance);
-            transform.LookAt(_targetPos);
-        }
+        CameraRotation();
     }
 
-    private void OnToggleMouseLook()
+    private void CameraRotation()
     {
-        isMouseLookActive = !isMouseLookActive;
+        if (_lookInput.sqrMagnitude >= Threshold && _lockCameraPosition == false)
+        {
+            _targetYaw += _lookInput.x * _lookSensitivity;
+            _targetPitch -= _lookInput.y * _lookSensitivity;
+        }
 
-        if (isMouseLookActive)
-        {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
-        }
-        else
-        {
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-        }
+        _targetYaw = ClampAngle(_targetYaw, float.MinValue, float.MaxValue);
+        _targetPitch = ClampAngle(_targetPitch, _bottomClamp, _topClamp);
+
+        // Cinemachine이 이 타겟의 회전을 추적
+        _cinemachineFollowTarget.rotation = Quaternion.Euler(
+            _targetPitch + _cameraAngleOverride, _targetYaw, 0f);
     }
+
+    private static float ClampAngle(float angle, float min, float max)
+    {
+        if (angle < -360f) angle += 360f;
+        if (angle > 360f) angle -= 360f;
+        return Mathf.Clamp(angle, min, max);
+    }
+
+    #region PlayerInput Send Messages
+
+    private void OnView(InputValue value)
+    {
+        _lookInput = value.Get<Vector2>();
+    }
+
+    #endregion
 }

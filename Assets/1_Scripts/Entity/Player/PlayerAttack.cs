@@ -6,7 +6,7 @@ using UnityEngine.InputSystem;
 public class PlayerAttack : MonoBehaviour
 {
     [Header("Option")]
-    public WeaponObject weapon;
+    public WeaponTrigger _weaponTrigger;
     public bool battleModState = false;
     [SerializeField] int _atk = 10;
     [SerializeField] float _atkSpeed = 1f;
@@ -15,13 +15,10 @@ public class PlayerAttack : MonoBehaviour
     [Header("Motion Option")]
     [SerializeField] AnimationClip attackClip;
     public float _attackMotionTime;
-    [SerializeField, Range(0, 100)] int _hitboxPreDelay = 10; // 백분율(%)
-    [SerializeField, Range(0, 100)] int _hitboxDuration = 50; // 백분율(%)
-
-    [Header("Input Action")]
-    PlayerFieldControl _battleActions;
-    InputAction _battleModToggleAction;
-    InputAction _attackAction;
+    [SerializeField, Range(0, 100)] int _hitboxPreDelay = 10;
+    [SerializeField, Range(0, 100)] int _hitboxDuration = 50;
+    private float calculatedPreDelay;
+    private float calculatedDuration;
 
     [Header("Animation")]
     [SerializeField] Animator _animator;
@@ -34,71 +31,50 @@ public class PlayerAttack : MonoBehaviour
         _player = player;
         _animator = player.Animator;
 
-        if (weapon == null)
-            weapon = GetComponentInChildren<WeaponObject>();
+        if (_weaponTrigger == null)
+            _weaponTrigger = GetComponentInChildren<WeaponTrigger>();
 
         _attackMotionTime = attackClip.length;
         SetAttackSpeed(_atkSpeed);
         InitWeapon();
     }
 
-    public void Awake()
+    #endregion
+
+    #region PlayerInput Send Messages
+
+    private void OnBattleModChange(InputValue value)
     {
-        _battleActions = new();
-        _battleModToggleAction = _battleActions.Player.BattleModChange;
-        _attackAction = _battleActions.Player.Attack;
+        if (value.isPressed == false) return;
+        battleModState = !battleModState;
+        _animator.SetBool("isCombat", battleModState);
     }
 
-    private void OnEnable()
+    private void OnAttack(InputValue value)
     {
-        _battleActions.Enable();
-        _battleModToggleAction.performed += OnBattleModAction;
-        _attackAction.performed += OnAttackAction;
-    }
-
-    private void OnDisable()
-    {
-        _battleModToggleAction.performed -= OnBattleModAction;
-        _attackAction.performed -= OnAttackAction;
-        _battleActions.Disable();
+        if (value.isPressed == false) return;
+        if (battleModState == false || canAttack == false || _player.State() != EntityState.Alive) return;
+        StartCoroutine(AttackRoutine());
+        StartCoroutine(ActiveTriggerCoroutine());
     }
 
     #endregion
 
-    //모드 변경 로직
-    public void OnBattleModAction(InputAction.CallbackContext callbackContext)
-    {
-        battleModState = !battleModState;
-        weapon.gameObject.SetActive(battleModState);
-        _animator.SetBool("isCombat", battleModState);
-    }
-
-    //공격 로직
-    public void OnAttackAction(InputAction.CallbackContext callbackContext)
-    {
-        if (!battleModState || !canAttack || _player.State() != EntityState.Alive) return;
-
-        StartCoroutine(AttackRoutine());
-    }
-
     private IEnumerator AttackRoutine()
     {
         _player.ChangeState(EntityState.Attack);
-        weapon.ActivateHitbox();
-
         _animator.SetTrigger("isAttack");
-
         yield return new WaitForSeconds(_attackMotionTime / _atkSpeed);
-
         if (_player.State() == EntityState.Attack)
-        {
             _player.ChangeState(EntityState.Alive);
-        }
     }
 
-    public void SetWeapon(WeaponObject newWeapon)
+    private IEnumerator ActiveTriggerCoroutine()
     {
-        weapon = newWeapon;
+        yield return new WaitForSeconds(calculatedPreDelay);
+        _weaponTrigger.gameObject.SetActive(true);
+        yield return new WaitForSeconds(calculatedDuration);
+        _weaponTrigger.gameObject.SetActive(false);
     }
 
     public void SetAttackSpeed(float speed)
@@ -110,14 +86,11 @@ public class PlayerAttack : MonoBehaviour
 
     public void InitWeapon()
     {
-        if (weapon == null) return;
-
+        if (_weaponTrigger == null) return;
         float actualMotionTime = _attackMotionTime / _atkSpeed;
-
-        float calculatedPreDelay = actualMotionTime * (_hitboxPreDelay / 100f);
-        float calculatedDuration = actualMotionTime * (_hitboxDuration / 100f);
-
-        weapon.Init(_atk, calculatedPreDelay, calculatedDuration);
+         calculatedPreDelay = actualMotionTime * (_hitboxPreDelay / 100f);
+         calculatedDuration = actualMotionTime * (_hitboxDuration / 100f);
+        _weaponTrigger.Initialize(_atk);
     }
 
     public void SetCanAttack(bool tri)

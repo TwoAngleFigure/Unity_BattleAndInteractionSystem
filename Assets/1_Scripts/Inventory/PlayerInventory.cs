@@ -12,15 +12,9 @@ public class PlayerInventory : MonoBehaviour
     private Dictionary<string, ItemData> _itemInventory = new();
 
     [Header("Action")]
-    //Database Changed
     public Action<Currency[]> CurrencyChangedAction;
     public Action<ItemData[]> InventoryChangedAction;
-    //Toggle State Changed
     public Action<bool> OnInventoryToggled;
-
-    [Header("Input Action")]
-    private PlayerFieldControl _InventoryAction;
-    private InputAction _InventoryToggleAction;
 
     [Header("UI")]
     [SerializeField] private CanvasGroup _inventoryUI;
@@ -35,28 +29,10 @@ public class PlayerInventory : MonoBehaviour
     #region Unity Lifecycle
     public void Initailize()
     {
-        //Singlton
-        if (Instance == null) { Instance = this; DontDestroyOnLoad(gameObject); }
-        else Destroy(gameObject); 
-
-        //Inventory
-        _InventoryAction = new();
-        _InventoryToggleAction = _InventoryAction.Player.Inventory;
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
         SetInventoryUIState(InventoryToggleState);
-
         CurrencyChangedAction?.Invoke(_currencyInventory.Values.ToArray());
-    }
-
-    private void OnEnable()
-    {
-        _InventoryAction.Enable();
-        _InventoryToggleAction.performed += OnInventoryToggle;
-    }
-
-    private void OnDisable()
-    {
-        _InventoryToggleAction.performed -= OnInventoryToggle;
-        _InventoryAction.Disable();
     }
     #endregion
 
@@ -72,9 +48,8 @@ public class PlayerInventory : MonoBehaviour
 
     public bool RemoveCurrency(string name, int count)
     {
-        if (!_currencyInventory.TryGetValue(name, out Currency targetCurrency)) return false; 
-        if (!targetCurrency.RemoveCount(count)) return false;
-
+        if (_currencyInventory.TryGetValue(name, out Currency targetCurrency) == false) return false;
+        if (targetCurrency.RemoveCount(count) == false) return false;
         CurrencyChangedAction?.Invoke(new[] { targetCurrency });
         return true;
     }
@@ -90,9 +65,8 @@ public class PlayerInventory : MonoBehaviour
     {
         if (_itemInventory.TryGetValue(newItem.id, out ItemData oldItem))
              oldItem.count += newItem.count;
-        else 
+        else
             _itemInventory.Add(newItem.id, newItem);
-
         InventoryChangedAction?.Invoke(_itemInventory.Values.ToArray());
     }
 
@@ -102,7 +76,6 @@ public class PlayerInventory : MonoBehaviour
         {
             oldItem.count -= 1;
             if (oldItem.count <= 0) _itemInventory.Remove(id);
-            
             oldItem.Use(BasePlayer.Instance.gameObject);
             InventoryChangedAction?.Invoke(_itemInventory.Values.ToArray());
             return true;
@@ -113,18 +86,17 @@ public class PlayerInventory : MonoBehaviour
     public ItemData GetItemData(string id)
     {
         if (_itemInventory.TryGetValue(id, out ItemData itemData))
-        {
             return itemData;
-        }
         return null;
     }
     #endregion
 
     #region Inventory UI Control
-    private void OnInventoryToggle(InputAction.CallbackContext callbackContext)
-    {
-        SetInventoryUIState(!InventoryToggleState);
 
+    private void OnInventory(InputValue value)
+    {
+        if (value.isPressed == false) return;
+        SetInventoryUIState(!InventoryToggleState);
         InventoryChangedAction?.Invoke(_itemInventory.Values.ToArray());
         CurrencyChangedAction?.Invoke(_currencyInventory.Values.ToArray());
     }
@@ -143,7 +115,6 @@ public class PlayerInventory : MonoBehaviour
             _inventoryUI.alpha = 0;
             _inventoryUI.interactable = false;
         }
-
         OnInventoryToggled?.Invoke(InventoryToggleState);
     }
     #endregion

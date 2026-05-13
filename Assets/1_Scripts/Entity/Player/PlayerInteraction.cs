@@ -3,35 +3,27 @@ using UnityEngine.InputSystem;
 
 public class PlayerInteraction : MonoBehaviour
 {
-    [Header("Input Action")]
-    private PlayerFieldControl _inputActions;
-    private InputAction _interactionAction;
-
     [Header("Interaction")]
+    private GameObject _hitTarget;
     private IInteractive _interactiveTarget;
-    public GameObject target;
     public InteractionUI interactionUI;
+
+    [Header("Raycast")]
+    [SerializeField] private Camera m_cam;
+    [SerializeField] private LayerMask m_hittableMask;
+    [SerializeField] private float m_maxDistance;
 
     public void Awake()
     {
-        _inputActions = new();
-        _interactionAction = _inputActions.Player.Interaction;
+        if (m_cam == null) m_cam = Camera.main;
     }
 
-    public void OnEnable()
-    {
-        _inputActions.Enable();
-        _interactionAction.performed += OnInteractiveAction;
-    }
+    #region PlayerInput Send Messages
 
-    public void OnDisable()
+    private void OnInteraction(InputValue value)
     {
-        _inputActions.Disable();
-        _interactionAction.performed -= OnInteractiveAction;
-    }
+        if (value.isPressed == false) return;
 
-    public void OnInteractiveAction(InputAction.CallbackContext callbackContext)
-    {
         if (_interactiveTarget != null)
         {
             _interactiveTarget.Interaction();
@@ -39,27 +31,36 @@ public class PlayerInteraction : MonoBehaviour
         }
     }
 
-    public void OnTriggerEnter(Collider other)
+    #endregion
+
+    public void Update()
     {
-        if (other.TryGetComponent<IInteractive>(out IInteractive target))
-        {
-            _interactiveTarget = target;
-            this.target = other.gameObject;
-            interactionUI.SetActiveUI(true, target.InteractionType());
-        }
+        DetectInteractionTarget();
     }
 
-    public void OnTriggerExit(Collider other)
+    public void DetectInteractionTarget()
     {
-        if (other.gameObject == target)
+        Vector2 _screenCenter = new(Screen.width * 0.5f, Screen.height * 0.5f);
+        Ray _ray = m_cam.ScreenPointToRay(_screenCenter);
+
+        if (Physics.Raycast(_ray, out var hit, m_maxDistance, m_hittableMask))
         {
-            if (_interactiveTarget != null)
+            Debug.DrawLine(_ray.origin, hit.point, Color.green);
+            if (hit.collider.gameObject == _hitTarget) return;
+            _hitTarget = hit.collider.gameObject;
+
+            if (hit.collider.TryGetComponent<IInteractive>(out var interactionTarget))
             {
-                _interactiveTarget.Clear();
-                this.target = null;
-                _interactiveTarget = null;
-                interactionUI.SetActiveUI(false);
+                _interactiveTarget = interactionTarget;
+                interactionUI.SetActiveUI(true, _interactiveTarget.InteractionType());
             }
+        }
+        else
+        {
+            Debug.DrawLine(_ray.origin, _ray.direction * m_maxDistance, Color.red);
+            if (_interactiveTarget != null) _interactiveTarget = null;
+            if (_hitTarget != null) _hitTarget = null;
+            interactionUI.SetActiveUI(false);
         }
     }
 }

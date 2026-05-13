@@ -4,7 +4,7 @@ using UnityEngine;
 public class EnemyAttack : MonoBehaviour
 {
     [Header("Option")]
-    public WeaponObject weapon;
+    public WeaponTrigger _weaponTrigger;
     [SerializeField] int _atk = 5;
     [SerializeField] float _atkSpeed = 1f;
     bool _canAttack = true;
@@ -14,6 +14,8 @@ public class EnemyAttack : MonoBehaviour
     [SerializeField] float _attackMotionTime;
     [SerializeField, Range(0, 100)] int _hitboxPreDelay = 20;
     [SerializeField, Range(0, 100)] int _hitboxDuration = 40;
+    float calculatedPreDelay;
+    float calculatedDuration;
 
     [Header("Animation")]
     [SerializeField] Animator _animator;
@@ -25,8 +27,8 @@ public class EnemyAttack : MonoBehaviour
         _baseEnemy = baseEnemy;
         _animator = _baseEnemy.Animator;
 
-        if (weapon == null)
-            weapon = _baseEnemy.GetComponentInChildren<WeaponObject>();
+        if (_weaponTrigger == null)
+            _weaponTrigger = _baseEnemy.GetComponentInChildren<WeaponTrigger>();
 
         if (attackClip != null)
             _attackMotionTime = attackClip.length;
@@ -40,23 +42,33 @@ public class EnemyAttack : MonoBehaviour
         {
             if (player.State() == EntityState.Dead) return;
             StartCoroutine(AttackRoutine());
+            StartCoroutine(ActiveTriggerCoroutine());
         }
     }
 
     private IEnumerator AttackRoutine()
     {
         _baseEnemy.ChangeState(EntityState.Attack);
-        weapon.ActivateHitbox();
 
         _animator.SetTrigger("AttackTri");
 
-        // 코루틴 타이머만으로 상태 복구 (AnimationCall 콜백 제거)
         yield return new WaitForSeconds(_attackMotionTime / _atkSpeed);
 
         if (_baseEnemy.State() == EntityState.Attack)
         {
             _baseEnemy.ChangeState(EntityState.Alive);
         }
+    }
+
+    private IEnumerator ActiveTriggerCoroutine()
+    {
+        yield return new WaitForSeconds(calculatedPreDelay);
+
+        _weaponTrigger.gameObject.SetActive(true);
+
+        yield return new WaitForSeconds(calculatedDuration);
+
+        _weaponTrigger.gameObject.SetActive(false);
     }
 
     public void SetAttackSpeed(float speed)
@@ -68,14 +80,14 @@ public class EnemyAttack : MonoBehaviour
 
     public void InitWeapon()
     {
-        if (weapon == null) return;
+        if (_weaponTrigger == null) return;
 
         float actualMotionTime = _attackMotionTime / _atkSpeed;
 
-        float calculatedPreDelay = actualMotionTime * (_hitboxPreDelay / 100f);
-        float calculatedDuration = actualMotionTime * (_hitboxDuration / 100f);
+        calculatedPreDelay = actualMotionTime * (_hitboxPreDelay / 100f);
+        calculatedDuration = actualMotionTime * (_hitboxDuration / 100f);
 
-        weapon.Init(_atk, calculatedPreDelay, calculatedDuration);
+        _weaponTrigger.Initialize(_atk);
     }
 
     public void SetCanAttack(bool tri)

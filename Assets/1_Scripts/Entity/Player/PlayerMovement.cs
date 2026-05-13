@@ -3,136 +3,132 @@ using UnityEngine.InputSystem;
 
 public class PlayerMovement : MonoBehaviour
 {
-    [SerializeField] Rigidbody playerRigi;
-    [SerializeField] Transform cameraTransform;
-
-    [Header("Input Action")]
-    private PlayerFieldControl movementActions;
-    private InputAction moveAction;
-    private InputAction jumpAction;
-    private InputAction sprintAction;
+    [SerializeField] private CharacterController _controller;
+    [SerializeField] private Transform _cameraTransform;
 
     [Header("Animation")]
-    [SerializeField] Animator animator;
+    [SerializeField] private Animator _animator;
 
     [Header("Movement")]
-    [SerializeField] Vector2 moveVactor;
-    [SerializeField] bool canMove = true;
-    [SerializeField] float moveAcceleration = 50f;
-    [SerializeField] float warkMaxSpeed = 2f;
-    [SerializeField] float sprintMaxSpeed = 5f;
-    [SerializeField] float rotationSpeed = 720f;
+    [SerializeField] private bool _canMove = true;
+    [SerializeField] private float _walkMaxSpeed = 2f;
+    [SerializeField] private float _sprintMaxSpeed = 5f;
+    [SerializeField] private float _rotationSpeed = 720f;
 
     [Header("Jump")]
-    [SerializeField] float jumpForce = 10f;
-    [SerializeField] bool isGround = true;
+    [SerializeField] private float _jumpForce = 10f;
+
+    [Header("Gravity")]
+    [SerializeField] private float _gravity = -20f;
+
+    private Vector2 _moveInput;
+    private bool _isSprinting;
+    private Vector3 _velocity;
+    private bool _wasGrounded;
 
     private BasePlayer _player;
 
     public void Init(BasePlayer player)
     {
         _player = player;
-        animator = player.Animator;
-        playerRigi = player.GetComponent<Rigidbody>();
+        _animator = player.Animator;
     }
 
     private void Awake()
     {
-        if (cameraTransform == null && Camera.main != null)
-            cameraTransform = Camera.main.transform;
+        if (_cameraTransform == null && Camera.main != null)
+            _cameraTransform = Camera.main.transform;
 
-        movementActions = new();
-        moveAction = movementActions.Player.Movement;
-        jumpAction = movementActions.Player.Jump;
-        sprintAction = movementActions.Player.Sprint;
+        if (_controller == null)
+            _controller = GetComponent<CharacterController>();
     }
 
-    public void OnEnable()
+    private void Update()
     {
-        movementActions.Enable();
-        jumpAction.performed += OnJump;
-    }
+        bool isGrounded = _controller.isGrounded;
 
-    public void OnDisable()
-    {
-        jumpAction.performed -= OnJump;
-        movementActions.Disable();
-    }
-
-    void FixedUpdate()
-    {
-        float _currentMaxSpeed = sprintAction.IsPressed() ? sprintMaxSpeed : warkMaxSpeed;
-        float _playerSpeed = playerRigi.linearVelocity.magnitude;
-        animator.SetFloat("Speed", _playerSpeed);
-        
-        if (canMove)
+        // 착지 감지
+        if (isGrounded && _wasGrounded == false)
         {
-            Vector2 _input = moveAction.ReadValue<Vector2>();
+            _animator.SetBool("isAir", false);
+            if (_player != null && _player.State() == EntityState.Air)
+                _player.ChangeState(EntityState.Alive);
+        }
 
-            Vector3 _camForward = cameraTransform.forward;
-            Vector3 _camRight = cameraTransform.right;
-            _camForward.y = 0;
-            _camRight.y = 0;
-            _camForward.Normalize();
-            _camRight.Normalize();
+        // 바닥에 있을 때 하방 속도 리셋
+        if (isGrounded && _velocity.y < 0f)
+        {
+            _velocity.y = -2f;
+        }
 
-            Vector3 _moveDir = (_camForward * _input.y) + (_camRight * _input.x);
-            moveVactor = new Vector2(_input.x, _input.y) * moveAcceleration;
+        float currentMaxSpeed = _isSprinting ? _sprintMaxSpeed : _walkMaxSpeed;
+        Vector3 horizontalMove = Vector3.zero;
 
+        if (_canMove)
+        {
+            Vector3 camForward = _cameraTransform.forward;
+            Vector3 camRight = _cameraTransform.right;
+            camForward.y = 0f;
+            camRight.y = 0f;
+            camForward.Normalize();
+            camRight.Normalize();
 
-            if (_moveDir.sqrMagnitude > 0.001f)
+            Vector3 moveDir = (camForward * _moveInput.y) + (camRight * _moveInput.x);
+
+            if (moveDir.sqrMagnitude > 0.001f)
             {
-                Quaternion _targetRotation = Quaternion.LookRotation(_moveDir);
-                transform.rotation = Quaternion.RotateTowards(transform.rotation, _targetRotation, rotationSpeed * Time.fixedDeltaTime);
+                moveDir = Vector3.ClampMagnitude(moveDir, 1f);
 
-                if (_playerSpeed < _currentMaxSpeed)
-                {
-                    playerRigi.AddForce(_moveDir * moveAcceleration, ForceMode.Acceleration);
-                }
+                Quaternion targetRotation = Quaternion.LookRotation(moveDir);
+                transform.rotation = Quaternion.RotateTowards(
+                    transform.rotation, targetRotation, _rotationSpeed * Time.deltaTime);
+
+                horizontalMove = moveDir * currentMaxSpeed;
             }
         }
+
+        // 중력 적용
+        _velocity.y += _gravity * Time.deltaTime;
+
+        // 이동 + 중력을 단일 Move()로 합산
+        Vector3 finalMove = (horizontalMove + _velocity) * Time.deltaTime;
+        _controller.Move(finalMove);
+
+        // 애니메이션 속도
+        _animator.SetFloat("Speed", horizontalMove.magnitude);
+
+        _wasGrounded = isGrounded;
     }
 
-    void OnJump(InputAction.CallbackContext _context)
+    #region PlayerInput Send Messages
+
+    private void OnMovement(InputValue value)
     {
-        if (isGround && _player != null && _player.State() == EntityState.Alive)
+        _moveInput = value.Get<Vector2>();
+    }
+
+    private void OnSprint(InputValue value)
+    {
+        _isSprinting = value.isPressed;
+    }
+
+    private void OnJump(InputValue value)
+    {
+        if (value.isPressed == false) return;
+
+        if (_controller.isGrounded && _player != null && _player.State() == EntityState.Alive)
         {
             _player.ChangeState(EntityState.Air);
-            playerRigi.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
-            animator.SetTrigger("isJump");
-            animator.SetBool("isAir", true);
-
+            _velocity.y = _jumpForce;
+            _animator.SetTrigger("isJump");
+            _animator.SetBool("isAir", true);
         }
     }
 
-    void OnTriggerStay(Collider _other)
-    {
-        if (_other.CompareTag("Floor"))
-        {
-            isGround = true;
-            if (_player != null && _player.State() == EntityState.Air)
-                _player.ChangeState(EntityState.Alive);
-        }
-    }
-
-    void OnTriggerEnter(Collider _other)
-    {
-        if (_other.CompareTag("Floor"))
-        {
-            animator.SetBool("isAir", false);
-            if (_player != null && _player.State() == EntityState.Air)
-                _player.ChangeState(EntityState.Alive);
-        }
-    }
-
-    void OnTriggerExit(Collider _other)
-    {
-        if (_other.CompareTag("Floor"))
-            isGround = false;
-    }
+    #endregion
 
     public void SetCanMove(bool tri)
     {
-        canMove = tri;
+        _canMove = tri;
     }
 }
