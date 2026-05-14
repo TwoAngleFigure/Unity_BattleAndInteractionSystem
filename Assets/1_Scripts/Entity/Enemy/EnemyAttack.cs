@@ -87,7 +87,7 @@ public class EnemyAttack : MonoBehaviour
         calculatedPreDelay = actualMotionTime * (_hitboxPreDelay / 100f);
         calculatedDuration = actualMotionTime * (_hitboxDuration / 100f);
 
-        _weaponTrigger.Initialize(_atk);
+        _weaponTrigger.SetWeapon(_atk);
     }
 
     public void SetCanAttack(bool tri)

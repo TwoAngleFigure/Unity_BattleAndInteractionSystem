@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2af04338710bdd1488cb45f2b474578d, type: 3}
+  m_Name: Long Sword
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponData_Base
+  weaponName: Long Sword
+  description: Simple long sharp sword.
+  weaponType: 1
+  weaponRangeType: 1
+  damage: 50
+  attackMotionClip: {fileID: 3094330708855449807, guid: a3b2bd75dc433e742844e9c7e0ecb01e, type: 3}
+  _hitboxPreDelay: 30
+  _hitboxDuration: 70
+  longAttackType: 0
+  projectilePrefab: {fileID: 0}
+  hitEffectPrefab: {fileID: 0}
+  shotRadius: 0
+  aimRange: 100
+  shotRange: 100
+  muzzleBlockRadius: 0.1

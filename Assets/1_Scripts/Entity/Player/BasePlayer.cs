@@ -5,7 +5,7 @@ public class BasePlayer : BaseEntity
 {
     [Header("Sub Systems")]
     private PlayerMovement _movement;
-    private PlayerAttack _attack;
+    private PlayerAttackSystem _attack;
     private PlayerInventory _inventory;
 
     public AnimationClip hitMotion;
@@ -23,7 +23,7 @@ public class BasePlayer : BaseEntity
         base.Awake();
 
         if (_movement == null) _movement = GetComponent<PlayerMovement>();
-        if (_attack == null) _attack = GetComponent<PlayerAttack>();
+        if (_attack == null) _attack = GetComponent<PlayerAttackSystem>();
 
         _movement.Init(this);
         _attack.Init(this);

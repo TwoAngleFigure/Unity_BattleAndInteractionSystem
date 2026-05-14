@@ -12,7 +12,7 @@ public class WeaponTrigger : MonoBehaviour
 
     private HashSet<GameObject> _hitObjects = new();
 
-    public void Initialize(int dmg)
+    public void SetWeapon(int dmg)
     {
         transform.localPosition = _center;
         _atk = dmg;

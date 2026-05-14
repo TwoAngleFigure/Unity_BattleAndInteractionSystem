@@ -61821,7 +61821,7 @@ MonoBehaviour:
   currentWeaponIndex: 0
   currentWeapon: {fileID: 0}
   weaponTrigger: {fileID: 428085507}
-  battleModState: 1
+  battleModState: 0
   canAttack: 1
   useAttackSpeed: 0
   atkSpeed: 1
